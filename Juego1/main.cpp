@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QRect>
 #include <QPixmap>
+#include <QDebug>
 
 class Game : public QWidget {
 public:
@@ -18,9 +19,17 @@ public:
         timerId = startTimer(16);
 
         // Cargar imágenes
-        platformImage.load(":/images/platform.png");
-        groundImage.load(":/images/ground.png");
-        mortyImage.load(":/images/morty.png");
+        if (!platformImage.load("C:/Users/Admin/Documents/Juego1/images/platform.png")) {
+            qDebug() << "Error cargando la imagen de la plataforma";
+        }
+
+        if (!groundImage.load("C:/Users/Admin/Documents/Juego1/images/ground.png")) {
+            qDebug() << "Error cargando la imagen del suelo";
+        }
+
+        if (!mortyImage.load("C:/Users/Admin/Documents/Juego1/images/morty.png")) {
+            qDebug() << "Error cargando la imagen de Morty";
+        }
 
         // Crear algunas plataformas
         platforms.append(QRect(50, 200, 150, 10));  // Plataforma más baja
@@ -61,10 +70,12 @@ protected:
         y += ySpeed;
 
         // Verificar colisiones con plataformas
+        bool onPlatform = false;
         foreach (const QRect &platform, platforms) {
             if (platform.intersects(QRect(x, y, 50, 50))) {
                 y = platform.top() - 50;
                 ySpeed = 0;
+                onPlatform = true;
                 break;
             }
         }
@@ -73,6 +84,7 @@ protected:
         if (startingPlatform.intersects(QRect(x, y, 50, 50))) {
             y = startingPlatform.top() - 50;
             ySpeed = 0;
+            onPlatform = true;
         }
 
         // Verificar si Morty ha caído más allá de la pantalla
@@ -87,14 +99,23 @@ protected:
             }
         }
 
+        // Actualizar posición de Morty según la velocidad horizontal
+        x += xSpeed;
+
+        // Permitir el salto solo cuando está en el suelo o en una plataforma
+        if (onPlatform || y >= groundLevel - 5) {
+            canJump = true;
+        }
+
         update(); // Vuelve a pintar la pantalla
     }
 
     void keyPressEvent(QKeyEvent *event) override {
         switch (event->key()) {
         case Qt::Key_W:
-            if (y == groundLevel) {
+            if (canJump) {
                 ySpeed = -12;
+                canJump = false;
             }
             break;
         case Qt::Key_A:
@@ -129,6 +150,7 @@ private:
     QPixmap platformImage;
     QPixmap groundImage;
     QPixmap mortyImage;
+    bool canJump = true;
 
     void resetPosition() {
         // Reiniciar posición de Morty en la plataforma inicial
