@@ -5,6 +5,10 @@
 #include <QPainter>
 #include <QRect>
 #include <QPixmap>
+#include <QFont>
+#include <QBrush>
+#include <QColor>
+#include <QMessageBox>
 #include <QDebug>
 
 class Game : public QWidget {
@@ -14,9 +18,10 @@ public:
         y = 50;
         groundLevel = 300;
         ySpeed = 0;
-        gravity = 10;
+        gravity = 15;
         lives = 3;
         timerId = startTimer(16);
+        level = 1; // Iniciar en el nivel 1
 
         // Cargar imágenes
         if (!platformImage.load("C:/Users/Admin/Documents/Juego1/images/platform.png")) {
@@ -31,13 +36,34 @@ public:
             qDebug() << "Error cargando la imagen de Morty";
         }
 
-        // Crear algunas plataformas
+        if (!goalImage.load("C:/Users/Admin/Documents/Juego1/images/goal.png")) {
+            qDebug() << "Error cargando la imagen de la meta";
+        }
+
+        if (!platform2Image.load("C:/Users/Admin/Documents/Juego1/images/platform2.png")) {
+            qDebug() << "Error cargando la imagen de la plataforma2";
+        }
+
+        // Crear algunas plataformas para el nivel 1
         platforms.append(QRect(50, 200, 150, 10));  // Plataforma más baja
         platforms.append(QRect(250, 150, 150, 10)); // Plataforma intermedia
         platforms.append(QRect(450, 100, 150, 10)); // Plataforma más alta
 
         // Plataforma superior izquierda donde aparece Morty
         startingPlatform = QRect(50, 50, 100, 10);
+
+        // Definir la meta para el nivel 1
+        goal = QRect(500, 50, 50, 50);
+
+        // Crear algunas plataformas para el nivel 2
+        if (level == 2) {
+            platforms.clear();
+            platforms.append(QRect(50, 250, 150, 10));
+            platforms.append(QRect(250, 200, 150, 10));
+            platforms.append(QRect(450, 150, 150, 10));
+            startingPlatform = QRect(50, 200, 100, 10);
+            goal = QRect(500, 150, 50, 50);
+        }
     }
 
 protected:
@@ -48,11 +74,11 @@ protected:
 
         // Dibujar las plataformas con imágenes
         foreach (const QRect &platform, platforms) {
-            painter.drawPixmap(platform, platformImage);
+            painter.drawPixmap(platform, (level == 2) ? platform2Image : platformImage);
         }
 
         // Dibujar la plataforma inicial con imagen
-        painter.drawPixmap(startingPlatform, platformImage);
+        painter.drawPixmap(startingPlatform, (level == 2) ? platform2Image : platformImage);
 
         // Dibujar el suelo solo si Morty tiene vidas restantes con imagen
         if (lives > 0) {
@@ -61,6 +87,14 @@ protected:
 
         // Dibujar a Morty con imagen
         painter.drawPixmap(x, y, 50, 50, mortyImage);
+
+        // Dibujar la meta con imagen y resaltado si está activa
+        painter.drawPixmap(goal, (goalActive && level == 1) ? goalActiveImage : goalImage);
+
+        // Dibujar el texto del nivel
+        painter.setFont(QFont("Arial", 12));
+        painter.setBrush(QBrush(QColor(255, 255, 255))); // Color blanco
+        painter.drawText(10, 20, "Nivel: " + QString::number(level));
     }
 
     void timerEvent(QTimerEvent *event) override {
@@ -87,6 +121,12 @@ protected:
             onPlatform = true;
         }
 
+        // Verificar colisión con la meta
+        if (goal.intersects(QRect(x, y, 50, 50)) && level == 1) {
+            // Morty ha alcanzado la meta, avanzar al siguiente nivel
+            advanceToNextLevel();
+        }
+
         // Verificar si Morty ha caído más allá de la pantalla
         if (y > height()) {
             if (lives > 0) {
@@ -107,6 +147,9 @@ protected:
             canJump = true;
         }
 
+        // Actualizar la activación de la meta para resaltarla
+        updateGoalStatus();
+
         update(); // Vuelve a pintar la pantalla
     }
 
@@ -114,7 +157,7 @@ protected:
         switch (event->key()) {
         case Qt::Key_W:
             if (canJump) {
-                ySpeed = -12;
+                ySpeed = -10;
                 canJump = false;
             }
             break;
@@ -150,13 +193,40 @@ private:
     QPixmap platformImage;
     QPixmap groundImage;
     QPixmap mortyImage;
+    QPixmap goalImage;
+    QPixmap goalActiveImage;
+    QPixmap platform2Image;
+    QRect goal;
     bool canJump = true;
+    int level;
+    bool goalActive = false;
 
     void resetPosition() {
         // Reiniciar posición de Morty en la plataforma inicial
         x = startingPlatform.left();
         y = startingPlatform.top() - 50;
         ySpeed = 0;
+    }
+
+    void advanceToNextLevel() {
+        // Aumentar el nivel y definir la nueva meta para el siguiente nivel
+        level++;
+        qDebug() << "¡Has avanzado al nivel" << level << "!";
+            goal = QRect(500, 150, 50, 50);
+        goalActive = false;
+        resetPosition();
+    }
+
+    void updateGoalStatus() {
+        // Resaltar la meta por un corto período después de alcanzarla
+        if (goal.intersects(QRect(x, y, 50, 50)) && level == 1) {
+            goalActive = true;
+            QTimer::singleShot(1000, this, &Game::deactivateGoal);
+        }
+    }
+
+    void deactivateGoal() {
+        goalActive = false;
     }
 };
 

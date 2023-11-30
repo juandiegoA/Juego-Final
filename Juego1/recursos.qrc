@@ -3,5 +3,7 @@
         <file>images/morty.png</file>
         <file>images/ground.png</file>
         <file>images/platform.png</file>
+        <file>images/goal.png</file>
+        <file>images/platform2.png</file>
     </qresource>
 </RCC>
